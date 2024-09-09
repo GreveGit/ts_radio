@@ -10,14 +10,17 @@ ui_page 'web/build/index.html'
 shared_scripts {
   'shared/**/*',
   '@ox_lib/init.lua',
-  '@qbx_core/modules/lib.lua'
+  '@qb-core/shared/locale.lua',  -- Replace with the QBCore shared library
+  'locales/en.lua',              -- Add if you use localization (adjust accordingly)
+  'config.lua'                   -- Assuming there's a config.lua file used for configuration
 }
+
 client_scripts {
-  '@qbx_core/modules/playerdata.lua',
+  '@qb-core/client/player.lua',   -- Replace with the QBCore player module
   'client/**/*'
 }
 
-server_script 'server/**/'
+server_script 'server/**/*'
 
 files {
   'web/build/index.html',

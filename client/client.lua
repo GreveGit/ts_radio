@@ -1,3 +1,5 @@
+local QBCore = exports['qb-core']:GetCoreObject()
+
 -- Show NUI
 local ShowNUI = function(arg)
   SetNuiFocus(arg, arg)
@@ -12,16 +14,22 @@ local micClicks = true
 
 -- Notify user
 local notifyUser = function(description, type)
-  lib.notify({ description = description, type = type })
+  QBCore.Functions.Notify(description, type)
 end
 
 -- Play audio
 local playAudio = function(audioName, audioRef)
-  qbx.playAudio({
-    audioName = audioName,
-    audioRef = audioRef,
-    source = cache.ped
+  SendNUIMessage({
+    transactionType = 'playSound',
+    transactionFile = audioRef,
+    transactionId = audioName
   })
+end
+
+-- Rounding function
+local round = function(num, numDecimalPlaces)
+    local mult = 10^(numDecimalPlaces or 0)
+    return math.floor(num * mult + 0.5) / mult
 end
 
 -- Connect to a specific radio channel
@@ -37,7 +45,7 @@ local connectToRadio = function(channel)
   exports['pma-voice']:setRadioChannel(channel)
   radioChannel = channel
 
-  local channelMessage = channel % 1 > 0 and 'You are now on channel ' .. channel .. ' MHz' or 'You are now on channel ' .. channel .. '0 MHz'
+  local channelMessage = channel % 1 > 0 and 'Du er nå på frekvens ' .. channel .. ' MHz' or 'Du er nå tilkoblet frekvens ' .. channel .. '0 MHz'
   notifyUser(channelMessage, 'success')
 end
 
@@ -46,12 +54,12 @@ local leaveRadio = function()
   if not inChannel then return end
 
   if radioChannel == 0 then
-    notifyUser('You are not connected to any channel', 'error')
+    notifyUser('Du er ikke koblet til noen kanal', 'error')
     return
   end
 
   playAudio('End_Squelch', 'CB_RADIO_SFX')
-  notifyUser('You have left the radio channel', 'error')
+  notifyUser('Du har forlatt radiokanalen', 'error')
 
   radioChannel = 0
   inChannel = false
@@ -99,20 +107,20 @@ local connectToRadioCallback = function(data, cb)
 
   local rchannel = tonumber(data.channel)
   if not rchannel or type(rchannel) ~= "number" or rchannel > Config.maxFrequency or rchannel < 1 then
-    notifyUser("This frequency is not available", 'error')
+    notifyUser("Denne frekvensen er ikke tilgjengelig", 'error')
     return cb('ok')
   end
 
-  rchannel = qbx.math.round(rchannel, Config.decimalPlaces)
+  rchannel = round(rchannel, Config.decimalPlaces)
 
   if rchannel == radioChannel then
-    notifyUser("You're already connected to this channel", 'error')
+    notifyUser("Du er allerede koblet til denne radiofrekvensen", 'error')
     return cb('ok')
   end
 
   local frequency = not Config.whitelistSubChannels and math.floor(rchannel) or rchannel
-  if Config.restrictedChannels[frequency] and (not Config.restrictedChannels[frequency][QBX.PlayerData.job.name] or not QBX.PlayerData.job.onduty) then
-    notifyUser("You cannot connect to this channel", 'error')
+  if Config.restrictedChannels[frequency] and (not Config.restrictedChannels[frequency][QBCore.Functions.GetPlayerData().job.name] or not QBCore.Functions.GetPlayerData().job.onduty) then
+    notifyUser("Du kan ikke koble til denne radiofrekvensen", 'error')
     return cb('ok')
   end
 
@@ -135,7 +143,6 @@ end
 -- Trigger notification callback
 local triggerNotification = function(_, cb)
   if onRadio then
-    -- Logic to trigger a notification (using your server-side logic)
     cb('ok')
   else
     cb('not_on_radio')
@@ -146,12 +153,12 @@ end
 local volumeUp = function(_, cb)
   if not onRadio then return cb('ok') end
   if radioVolume > 95 then
-    notifyUser('Maximum volume reached', 'error')
+    notifyUser('Maksimalt volum nådd', 'error')
     return
   end
 
   radioVolume = radioVolume + 5
-  notifyUser('New volume level: ' .. radioVolume, 'success')
+  notifyUser('Nytt volumnivå: ' .. radioVolume, 'success')
   exports['pma-voice']:setRadioVolume(radioVolume)
   cb('ok')
 end
@@ -165,7 +172,7 @@ local volumeDown = function(_, cb)
   end
 
   radioVolume = radioVolume - 5
-  notifyUser('New volume level: ' .. radioVolume, 'success')
+  notifyUser('Nytt volumnivå: ' .. radioVolume, 'success')
   exports['pma-voice']:setRadioVolume(radioVolume)
   cb('ok')
 end

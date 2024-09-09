@@ -1,15 +1,17 @@
+local QBCore = exports['qb-core']:GetCoreObject()
 local restrictedChannels = Config.restrictedChannels
 
-lib.addCommand('radio', {
-    help = 'Opens the radio',
-}, function(source)
+-- Command to open the radio
+QBCore.Commands.Add('radio', 'Åpne radio', {}, false, function(source)
     TriggerClientEvent('openRadio', source, true)
 end)
 
-exports.qbx_core:CreateUseableItem('radio', function(source)
+-- Make the radio item usable
+QBCore.Functions.CreateUseableItem('radio', function(source)
     TriggerClientEvent('openRadio', source, true)
 end)
 
+-- If sub-channels are not whitelisted, expand the restricted channels to include decimals
 if not Config.whitelistSubChannels then
     for channel, jobs in pairs(restrictedChannels) do
         for i = 1, 99 do
@@ -18,9 +20,15 @@ if not Config.whitelistSubChannels then
     end
 end
 
+-- Add channel check based on job restrictions
 for channel, jobs in pairs(restrictedChannels) do
     exports['pma-voice']:addChannelCheck(channel, function(source)
-        local player = exports.qbx_core:GetPlayer(source)
-        return jobs[player.PlayerData.job.name] and player.PlayerData.job.onduty
+        local player = QBCore.Functions.GetPlayer(source)  -- Get the player data via QBCore
+        if player then
+            local jobName = player.PlayerData.job.name
+            local onDuty = player.PlayerData.job.onduty
+            return jobs[jobName] and onDuty  -- Check if the player's job allows access and if they are on duty
+        end
+        return false  -- Deny access if player data isn't found
     end)
 end
